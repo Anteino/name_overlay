@@ -5,19 +5,10 @@
 
   <meta charset="UTF-8">
 
-  <!-- =========================================================
-       FORCE A 1920 x 1080 VIEWPORT
-       ========================================================= -->
-
-  <meta
-    name="viewport"
-    content="width=1920, height=1080, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
-  >
-
   <style>
 
     /* =========================================================
-       FIXED PAGE
+       PAGE
        ========================================================= */
 
     html,
@@ -25,29 +16,24 @@
       margin: 0;
       padding: 0;
 
-      width: 1920px;
-      height: 1080px;
-
-      min-width: 1920px;
-      min-height: 1080px;
-
-      max-width: 1920px;
-      max-height: 1080px;
+      width: 100%;
+      height: 100%;
 
       background: transparent;
 
       overflow: hidden;
-
-      /*
-       * Prevent browser text/layout scaling from affecting
-       * the overlay.
-       */
-      zoom: 1;
     }
 
 
     /* =========================================================
-       FIXED 1920 x 1080 NAME STAGE
+       1920 x 1080 INTERNAL CANVAS
+       =========================================================
+       
+       Everything inside this stage ALWAYS uses exactly
+       1920 x 1080 coordinates.
+
+       JavaScript scales the whole stage to whatever viewport
+       OBS/Chromium gives us.
        ========================================================= */
 
     #overlayStage {
@@ -59,11 +45,7 @@
       width: 1920px;
       height: 1080px;
 
-      min-width: 1920px;
-      min-height: 1080px;
-
-      max-width: 1920px;
-      max-height: 1080px;
+      transform-origin: 0 0;
 
       overflow: hidden;
     }
@@ -79,24 +61,13 @@
       left: 0;
       top: 0;
 
-      width: 1920px !important;
-      height: 1080px !important;
-
-      min-width: 1920px;
-      min-height: 1080px;
-
-      max-width: 1920px;
-      max-height: 1080px;
+      width: 1920px;
+      height: 1080px;
 
       display: block;
 
       margin: 0;
       padding: 0;
-
-      /*
-       * Explicitly prevent any CSS scaling.
-       */
-      transform: none;
     }
 
 
@@ -128,6 +99,35 @@
       font-size: 200px;
       padding: 8px 20px;
       height: fit-content;
+    }
+
+
+    /* =========================================================
+       DEBUG
+       =========================================================
+
+       Hidden by default.
+
+       Set display:block temporarily if you want to inspect
+       the detected OBS/Chromium viewport.
+       ========================================================= */
+
+    #debug {
+      display: none;
+
+      position: fixed;
+      left: 10px;
+      top: 10px;
+
+      padding: 10px;
+
+      background: rgba(255,255,255,0.9);
+      color: black;
+
+      font-family: monospace;
+      font-size: 20px;
+
+      z-index: 999999;
     }
 
   </style>
@@ -202,16 +202,144 @@
 </div>
 
 
+<div id="debug"></div>
+
+
 <script>
+
+
+// =============================================================
+// AUTOMATIC OBS / CHROMIUM SCALE COMPENSATION
+// =============================================================
+
+const DESIGN_WIDTH = 1920;
+const DESIGN_HEIGHT = 1080;
+
+const overlayStage =
+  document.getElementById("overlayStage");
+
+
+function updateStageScale() {
+
+  /*
+   * Get the actual CSS viewport that Chromium gives the page.
+   */
+
+  const viewportWidth =
+    window.innerWidth;
+
+  const viewportHeight =
+    window.innerHeight;
+
+
+  /*
+   * Calculate how much the 1920x1080 design needs to be
+   * scaled to fit the actual viewport.
+   *
+   * IMPORTANT:
+   *
+   * We deliberately use the smaller scale so that the entire
+   * 1920x1080 canvas remains visible.
+   */
+
+  const scaleX =
+    viewportWidth / DESIGN_WIDTH;
+
+  const scaleY =
+    viewportHeight / DESIGN_HEIGHT;
+
+
+  const scale =
+    Math.min(
+      scaleX,
+      scaleY
+    );
+
+
+  /*
+   * Apply the compensation to the WHOLE stage.
+   *
+   * The SVG itself remains 1920x1080.
+   * None of the SVG geometry gets modified.
+   */
+
+  overlayStage.style.transform =
+    `scale(${scale})`;
+
+
+  /*
+   * Keep the stage anchored at the top-left.
+   */
+
+  overlayStage.style.left =
+    "0px";
+
+  overlayStage.style.top =
+    "0px";
+
+
+  /*
+   * Debug information.
+   */
+
+  const debug =
+    document.getElementById("debug");
+
+  debug.textContent =
+    "Viewport: " +
+    viewportWidth +
+    " × " +
+    viewportHeight +
+    "\nDPR: " +
+    window.devicePixelRatio +
+    "\nScaleX: " +
+    scaleX +
+    "\nScaleY: " +
+    scaleY +
+    "\nFinal scale: " +
+    scale;
+
+}
+
+
+// =============================================================
+// INITIAL SCALE
+// =============================================================
+
+updateStageScale();
+
+
+// =============================================================
+// UPDATE WHEN OBS / CHROMIUM RESIZES
+// =============================================================
+
+window.addEventListener(
+  "resize",
+  updateStageScale
+);
+
+
+// Also handle visual viewport changes.
+
+if (window.visualViewport) {
+
+  window.visualViewport.addEventListener(
+    "resize",
+    updateStageScale
+  );
+
+}
 
 
 // =============================================================
 // PARAMETERS
 // =============================================================
 
-let text = "Silly\nGoose";
+let text =
+  "Silly\nGoose";
 
-let glowColor = null;
+let glowColor =
+  null;
 
 
 /*
@@ -220,27 +348,37 @@ let glowColor = null;
  * =============================================================
  */
 
-const transitionWidth = 20;
+const transitionWidth =
+  20;
 
 
 /*
  * Number of transparency bands.
  */
 
-const numberOfBands = 5;
+const numberOfBands =
+  5;
 
 
 const params =
-  new URLSearchParams(window.location.search);
+  new URLSearchParams(
+    window.location.search
+  );
 
 
 if (params.has("name")) {
-  text = params.get("name");
+
+  text =
+    params.get("name");
+
 }
 
 
 if (params.has("color")) {
-  glowColor = params.get("color");
+
+  glowColor =
+    params.get("color");
+
 }
 
 
@@ -268,8 +406,12 @@ const mask =
   document.getElementById("cutoutMask");
 
 
-const targetW = 1920;
-const targetH = 1080;
+const targetW =
+  1920;
+
+
+const targetH =
+  1080;
 
 
 // =============================================================
@@ -335,7 +477,8 @@ function calculateLine(
 ) {
 
   const boxH =
-    targetH / lines.length;
+    targetH /
+    lines.length;
 
 
   const measurement =
@@ -351,10 +494,6 @@ function calculateLine(
     measurement.getBBox();
 
 
-  /*
-   * Same vertical sizing behavior as original.
-   */
-
   const shrinkFactor =
     0.3;
 
@@ -365,7 +504,8 @@ function calculateLine(
 
 
   const deltaY =
-    (bbox.height - newHeight) / 2;
+    (bbox.height -
+      newHeight) / 2;
 
 
   const objX =
@@ -373,7 +513,8 @@ function calculateLine(
 
 
   const objY =
-    bbox.y + deltaY;
+    bbox.y +
+    deltaY;
 
 
   const objW =
@@ -385,15 +526,18 @@ function calculateLine(
 
 
   const scaleX =
-    targetW / objW;
+    targetW /
+    objW;
 
 
   const scaleY =
-    boxH / objH;
+    boxH /
+    objH;
 
 
   const offsetY =
-    index * boxH;
+    index *
+    boxH;
 
 
   const transform =
@@ -469,7 +613,8 @@ function createInnerGlowFilter(
   // ===========================================================
 
   const finalBandWidth =
-    transitionWidth / numberOfBands;
+    transitionWidth /
+    numberOfBands;
 
 
   const sourceBandWidth =
@@ -774,10 +919,6 @@ function createInnerGlow(
   );
 
 
-  /*
-   * Draw the transparency bands before the black overlay.
-   */
-
   svg.appendChild(
     glowText
   );
@@ -841,10 +982,11 @@ function render() {
 
 
   // -----------------------------------------------------------
-  // Calculate all text geometry first.
+  // Calculate all text geometry
   // -----------------------------------------------------------
 
-  const measurements = [];
+  const measurements =
+    [];
 
 
   for (
