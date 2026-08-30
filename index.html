@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <style>
+    html, body {
+      margin: 0;
+      background: transparent;
+      overflow: hidden;
+    }
+
+    svg {
+      width: 1920px;
+      height: 1080px;
+      display: block;
+    }
+  </style>
+</head>
+<body>
+
+<svg id="svg" viewBox="0 0 1920 1080">
+
+  <defs>
+    <mask id="cutoutMask">
+      <rect x="0" y="0" width="1920" height="1080" fill="white"/>
+    </mask>
+  </defs>
+
+</svg>
+
+<div style="padding:20px;font-family:sans-serif;">
+  <div style="display:flex;align-items:flex-start;gap:12px;">
+    <textarea
+      id="editor"
+      rows="4"
+      style="width:800px;font-size:200px;"
+    ></textarea>
+
+    <button
+      id="submit"
+      style="font-size:200px;padding:8px 20px;height:fit-content;"
+    >
+      Submit
+    </button>
+  </div>
+</div>
+
+<script>
+// Get "name" from the URL.
+// If it isn't specified, use "Silly\nGoose".
+const params = new URLSearchParams(window.location.search);
+let text = params.get("name") ?? "Silly\nGoose";
+
+text = text.toUpperCase();
+
+// Put the initial value into the textarea
+document.getElementById("editor").value = text;
+
+const NS = "http://www.w3.org/2000/svg";
+const svg = document.getElementById("svg");
+
+const targetW = 1920;
+const targetH = 1080;
+
+const mask = document.getElementById("cutoutMask");
+
+function addLine(line, index) {
+  const lines = text.split("\n");
+  const boxH = targetH / lines.length;
+
+  const txt = document.createElementNS(NS, "text");
+  txt.textContent = line;
+
+  txt.setAttribute("font-size", "160");
+  txt.setAttribute("font-family", "Impact, Arial Black, Arial, sans-serif");
+  txt.setAttribute("font-weight", "900");
+
+  txt.setAttribute("x", 0);
+  txt.setAttribute("y", 0);
+
+  svg.appendChild(txt);
+
+  requestAnimationFrame(() => {
+    const bbox = txt.getBBox();
+
+    const shrinkFactor = 0.3;
+    const newHeight = bbox.height * (1 - shrinkFactor);
+    const deltaY = (bbox.height - newHeight) / 2;
+
+    const objX = bbox.x;
+    const objY = bbox.y + deltaY;
+    const objW = bbox.width;
+    const objH = newHeight;
+
+    const scaleX = targetW / objW;
+    const scaleY = boxH / objH;
+
+    const offsetY = index * boxH;
+
+    const g = document.createElementNS(NS, "g");
+
+    const transform =
+      `translate(0,${offsetY}) ` +
+      `scale(${scaleX},${scaleY}) ` +
+      `translate(${-objX},${-objY})`;
+
+    g.setAttribute("transform", transform);
+
+    // CUTOUT TEXT
+    const hole = document.createElementNS(NS, "text");
+    hole.textContent = line;
+
+    hole.setAttribute("font-size", "160");
+    hole.setAttribute("font-family", "Impact, Arial Black, Arial, sans-serif");
+    hole.setAttribute("font-weight", "900");
+
+    hole.setAttribute("fill", "black");
+
+    g.appendChild(hole);
+    mask.appendChild(g);
+
+    svg.removeChild(txt);
+  });
+}
+
+function render() {
+  // Clear previous overlay and mask contents
+  while (svg.children.length > 1) {
+    svg.removeChild(svg.lastChild);
+  }
+
+  while (mask.children.length > 1) {
+    mask.removeChild(mask.lastChild);
+  }
+
+  const lines = text.split("\n");
+
+  for (let i = 0; i < lines.length; i++) {
+    addLine(lines[i], i);
+  }
+
+  requestAnimationFrame(() => {
+    const overlay = document.createElementNS(NS, "rect");
+    overlay.setAttribute("x", "0");
+    overlay.setAttribute("y", "0");
+    overlay.setAttribute("width", "1920");
+    overlay.setAttribute("height", "1080");
+    overlay.setAttribute("fill", "black");
+    overlay.setAttribute("mask", "url(#cutoutMask)");
+    svg.appendChild(overlay);
+  });
+}
+
+render();
+
+document.getElementById("submit").addEventListener("click", () => {
+  text = document.getElementById("editor").value.toUpperCase();
+  render();
+});
+</script>
+
+</body>
+</html>
