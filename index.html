@@ -8,11 +8,18 @@
   <style>
 
     /* =========================================================
-       PAGE
+       FIXED PAGE
        ========================================================= */
 
     html,
     body {
+      position: fixed;
+
+      left: 0;
+      top: 0;
+      right: 0;
+      bottom: 0;
+
       margin: 0;
       padding: 0;
 
@@ -27,13 +34,6 @@
 
     /* =========================================================
        1920 x 1080 INTERNAL CANVAS
-       =========================================================
-       
-       Everything inside this stage ALWAYS uses exactly
-       1920 x 1080 coordinates.
-
-       JavaScript scales the whole stage to whatever viewport
-       OBS/Chromium gives us.
        ========================================================= */
 
     #overlayStage {
@@ -76,7 +76,7 @@
        ========================================================= */
 
     #controls {
-      position: absolute;
+      position: fixed;
 
       left: 0;
       top: 1100px;
@@ -108,20 +108,21 @@
 
        Hidden by default.
 
-       Set display:block temporarily if you want to inspect
-       the detected OBS/Chromium viewport.
+       Change display:none to display:block if you want
+       to inspect the detected viewport.
        ========================================================= */
 
     #debug {
       display: none;
 
       position: fixed;
+
       left: 10px;
       top: 10px;
 
       padding: 10px;
 
-      background: rgba(255,255,255,0.9);
+      background: rgba(255, 255, 255, 0.9);
       color: black;
 
       font-family: monospace;
@@ -202,6 +203,10 @@
 </div>
 
 
+<!-- =========================================================
+     DEBUG
+     ========================================================= -->
+
 <div id="debug"></div>
 
 
@@ -212,17 +217,23 @@
 // AUTOMATIC OBS / CHROMIUM SCALE COMPENSATION
 // =============================================================
 
-const DESIGN_WIDTH = 1920;
-const DESIGN_HEIGHT = 1080;
+const DESIGN_WIDTH =
+  1920;
+
+const DESIGN_HEIGHT =
+  1080;
+
 
 const overlayStage =
-  document.getElementById("overlayStage");
+  document.getElementById(
+    "overlayStage"
+  );
 
 
 function updateStageScale() {
 
   /*
-   * Get the actual CSS viewport that Chromium gives the page.
+   * Actual CSS viewport provided by Chromium.
    */
 
   const viewportWidth =
@@ -233,20 +244,18 @@ function updateStageScale() {
 
 
   /*
-   * Calculate how much the 1920x1080 design needs to be
-   * scaled to fit the actual viewport.
-   *
-   * IMPORTANT:
-   *
-   * We deliberately use the smaller scale so that the entire
-   * 1920x1080 canvas remains visible.
+   * Calculate scale needed to fit the complete
+   * 1920 x 1080 design inside the viewport.
    */
 
   const scaleX =
-    viewportWidth / DESIGN_WIDTH;
+    viewportWidth /
+    DESIGN_WIDTH;
+
 
   const scaleY =
-    viewportHeight / DESIGN_HEIGHT;
+    viewportHeight /
+    DESIGN_HEIGHT;
 
 
   const scale =
@@ -257,10 +266,9 @@ function updateStageScale() {
 
 
   /*
-   * Apply the compensation to the WHOLE stage.
+   * Scale the COMPLETE overlay as one object.
    *
-   * The SVG itself remains 1920x1080.
-   * None of the SVG geometry gets modified.
+   * The SVG remains internally 1920 x 1080.
    */
 
   overlayStage.style.transform =
@@ -268,7 +276,7 @@ function updateStageScale() {
 
 
   /*
-   * Keep the stage anchored at the top-left.
+   * Always anchor at top-left.
    */
 
   overlayStage.style.left =
@@ -279,11 +287,14 @@ function updateStageScale() {
 
 
   /*
-   * Debug information.
+   * Update optional debug information.
    */
 
   const debug =
-    document.getElementById("debug");
+    document.getElementById(
+      "debug"
+    );
+
 
   debug.textContent =
     "Viewport: " +
@@ -310,7 +321,7 @@ updateStageScale();
 
 
 // =============================================================
-// UPDATE WHEN OBS / CHROMIUM RESIZES
+// HANDLE RESIZE
 // =============================================================
 
 window.addEventListener(
@@ -318,8 +329,6 @@ window.addEventListener(
   updateStageScale
 );
 
-
-// Also handle visual viewport changes.
 
 if (window.visualViewport) {
 
@@ -395,15 +404,21 @@ const NS =
 
 
 const svg =
-  document.getElementById("svg");
+  document.getElementById(
+    "svg"
+  );
 
 
 const defs =
-  svg.querySelector("defs");
+  svg.querySelector(
+    "defs"
+  );
 
 
 const mask =
-  document.getElementById("cutoutMask");
+  document.getElementById(
+    "cutoutMask"
+  );
 
 
 const targetW =
@@ -482,7 +497,9 @@ function calculateLine(
 
 
   const measurement =
-    createText(line);
+    createText(
+      line
+    );
 
 
   svg.appendChild(
@@ -504,8 +521,10 @@ function calculateLine(
 
 
   const deltaY =
-    (bbox.height -
-      newHeight) / 2;
+    (
+      bbox.height -
+      newHeight
+    ) / 2;
 
 
   const objX =
@@ -629,7 +648,8 @@ function createInnerGlowFilter(
   // CREATE PROGRESSIVELY ERODED SHAPES
   // ===========================================================
 
-  const erosion = [];
+  const erosion =
+    [];
 
 
   erosion[0] =
@@ -688,7 +708,8 @@ function createInnerGlowFilter(
   // OPACITY VALUES
   // ===========================================================
 
-  const opacities = [];
+  const opacities =
+    [];
 
 
   for (
@@ -978,7 +999,9 @@ function render() {
 
 
   const lines =
-    text.split("\n");
+    text.split(
+      "\n"
+    );
 
 
   // -----------------------------------------------------------
@@ -1140,14 +1163,18 @@ render();
 // =============================================================
 
 document
-  .getElementById("submit")
+  .getElementById(
+    "submit"
+  )
   .addEventListener(
     "click",
     () => {
 
       text =
         document
-          .getElementById("editor")
+          .getElementById(
+            "editor"
+          )
           .value
           .toUpperCase();
 
