@@ -4,66 +4,190 @@
   <meta charset="UTF-8" />
 
   <style>
-    html, body {
+    html,
+    body {
       margin: 0;
+      padding: 0;
       background: transparent;
       overflow: hidden;
     }
 
-    svg {
+    /* =========================================================
+       FIXED 1920 x 1080 NAME STAGE
+       ========================================================= */
+
+    #overlayStage {
+      position: relative;
+
       width: 1920px;
       height: 1080px;
+
+      min-width: 1920px;
+      min-height: 1080px;
+
+      max-width: 1920px;
+      max-height: 1080px;
+
+      overflow: hidden;
+    }
+
+    #svg {
+      position: absolute;
+
+      left: 0;
+      top: 0;
+
+      width: 1920px !important;
+      height: 1080px !important;
+
+      min-width: 1920px;
+      min-height: 1080px;
+
+      max-width: 1920px;
+      max-height: 1080px;
+
       display: block;
+      margin: 0;
+      padding: 0;
+    }
+
+    /* =========================================================
+       CONTROLS
+       ========================================================= */
+
+    #controls {
+      padding: 20px;
+      font-family: sans-serif;
+
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+    }
+
+    #editor {
+      width: 800px;
+      font-size: 200px;
+    }
+
+    #submit {
+      font-size: 200px;
+      padding: 8px 20px;
+      height: fit-content;
     }
   </style>
 </head>
 
 <body>
 
-<svg id="svg" viewBox="0 0 1920 1080">
+<!-- ===========================================================
+     1920 x 1080 OVERLAY
+     =========================================================== -->
 
-  <defs>
-    <mask id="cutoutMask">
-      <rect
+<div id="overlayStage">
+
+  <svg
+    id="svg"
+    width="1920"
+    height="1080"
+    viewBox="0 0 1920 1080"
+    preserveAspectRatio="none"
+  >
+
+    <defs>
+
+      <!-- =====================================================
+           BLACK CUTOUT MASK
+           ===================================================== -->
+
+      <mask
+        id="cutoutMask"
+        maskUnits="userSpaceOnUse"
         x="0"
         y="0"
         width="1920"
         height="1080"
-        fill="white"
-      />
-    </mask>
-  </defs>
+      >
 
-</svg>
+        <rect
+          x="0"
+          y="0"
+          width="1920"
+          height="1080"
+          fill="white"
+        />
 
-<div style="padding:20px;font-family:sans-serif;">
-  <div style="display:flex;align-items:flex-start;gap:12px;">
+      </mask>
 
-    <textarea
-      id="editor"
-      rows="4"
-      style="width:800px;font-size:200px;"
-    ></textarea>
+    </defs>
 
-    <button
-      id="submit"
-      style="font-size:200px;padding:8px 20px;height:fit-content;"
-    >
-      Submit
-    </button>
+  </svg>
 
-  </div>
+</div>
+
+
+<!-- ===========================================================
+     EDITOR
+     =========================================================== -->
+
+<div id="controls">
+
+  <textarea
+    id="editor"
+    rows="4"
+  ></textarea>
+
+  <button id="submit">
+    Submit
+  </button>
+
 </div>
 
 
 <script>
 
-// ==================================================
-// URL PARAMETERS
-// ==================================================
+// =============================================================
+// PARAMETERS
+// =============================================================
 
 let text = "Silly\nGoose";
 let glowColor = null;
+
+/*
+ * =============================================================
+ * TRANSPARENCY TRANSITION WIDTH
+ * =============================================================
+ *
+ * This is the TOTAL width of the transparency transition
+ * in the FINAL 1920 x 1080 image.
+ *
+ * Examples:
+ *
+ *   5  = 5px total
+ *   10 = 10px total
+ *   20 = 20px total
+ *   30 = 30px total
+ *
+ * There are always 10 bands.
+ *
+ * Therefore:
+ *
+ *   10px / 10 bands = approximately 1px per band
+ *
+ * Set this to whatever transition width you want.
+ */
+
+const transitionWidth = 20;
+
+
+/*
+ * Number of transparency bands.
+ *
+ * Keep this at 10 if you want:
+ *
+ * 100%, 90%, 80%, ... 10%
+ */
+const numberOfBands = 5;
+
 
 const params =
   new URLSearchParams(window.location.search);
@@ -76,40 +200,12 @@ if (params.has("color")) {
   glowColor = params.get("color");
 }
 
-
-// Support index.html&name=... as well
-const url = window.location.href;
-
-if (!params.has("name")) {
-
-  const match =
-    url.match(/[?&]name=([^&]*)/);
-
-  if (match) {
-    try {
-      text = decodeURIComponent(match[1]);
-    } catch (e) {}
-  }
-}
-
-if (!params.has("color")) {
-
-  const match =
-    url.match(/[?&]color=([^&]*)/);
-
-  if (match) {
-    try {
-      glowColor = decodeURIComponent(match[1]);
-    } catch (e) {}
-  }
-}
-
 text = text.toUpperCase();
 
 
-// ==================================================
-// SVG SETUP
-// ==================================================
+// =============================================================
+// SVG
+// =============================================================
 
 const NS =
   "http://www.w3.org/2000/svg";
@@ -127,15 +223,9 @@ const targetW = 1920;
 const targetH = 1080;
 
 
-// Keep editor empty
-document.getElementById(
-  "editor"
-).value = "";
-
-
-// ==================================================
-// TEXT CREATOR
-// ==================================================
+// =============================================================
+// CREATE TEXT
+// =============================================================
 
 function createText(line) {
 
@@ -176,13 +266,116 @@ function createText(line) {
 }
 
 
-// ==================================================
-// CREATE INNER GLOW FILTER
-// ==================================================
+// =============================================================
+// CALCULATE TEXT POSITION / SCALE
+// =============================================================
+
+function calculateLine(
+  line,
+  index,
+  lines
+) {
+
+  const boxH =
+    targetH / lines.length;
+
+  const measurement =
+    createText(line);
+
+  svg.appendChild(
+    measurement
+  );
+
+  const bbox =
+    measurement.getBBox();
+
+
+  /*
+   * Same vertical sizing behavior as the original.
+   */
+
+  const shrinkFactor =
+    0.3;
+
+  const newHeight =
+    bbox.height *
+    (1 - shrinkFactor);
+
+  const deltaY =
+    (bbox.height - newHeight) / 2;
+
+
+  const objX =
+    bbox.x;
+
+  const objY =
+    bbox.y + deltaY;
+
+  const objW =
+    bbox.width;
+
+  const objH =
+    newHeight;
+
+
+  const scaleX =
+    targetW / objW;
+
+  const scaleY =
+    boxH / objH;
+
+  const offsetY =
+    index * boxH;
+
+
+  const transform =
+    `translate(0,${offsetY}) ` +
+    `scale(${scaleX},${scaleY}) ` +
+    `translate(${-objX},${-objY})`;
+
+
+  svg.removeChild(
+    measurement
+  );
+
+
+  return {
+    line,
+    transform,
+
+    /*
+     * Save these because the inner bands need to compensate
+     * for the scaling later.
+     */
+    scaleX,
+    scaleY
+  };
+}
+
+
+// =============================================================
+// CREATE THE 10 NESTED COLOR BANDS
+// =============================================================
+//
+// Each band is:
+//
+//   previous shape - next eroded shape
+//
+// Therefore every band:
+//
+//   • touches the next band
+//   • cannot overlap the next band
+//   • cannot leave a gap
+//
+// The erosion amount is calculated so that the resulting
+// distance in the FINAL 1920 x 1080 image is controlled by
+// transitionWidth.
+// =============================================================
 
 function createInnerGlowFilter(
-  filterId,
-  color
+  id,
+  scaleX,
+  scaleY
 ) {
 
   const filter =
@@ -193,500 +386,509 @@ function createInnerGlowFilter(
 
   filter.setAttribute(
     "id",
-    filterId
+    id
   );
 
   filter.setAttribute(
     "x",
-    "-20%"
+    "-10%"
   );
 
   filter.setAttribute(
     "y",
-    "-20%"
+    "-10%"
   );
 
   filter.setAttribute(
     "width",
-    "140%"
+    "120%"
   );
 
   filter.setAttribute(
     "height",
-    "140%"
+    "120%"
   );
+
+
+  // ===========================================================
+  // CALCULATE FINAL PIXEL WIDTH
+  // ===========================================================
+
+  /*
+   * We want the whole transition to be transitionWidth pixels
+   * wide in the FINAL image.
+   *
+   * Each band therefore represents:
+   *
+   *     transitionWidth / numberOfBands
+   *
+   * final pixels.
+   */
+
+  const finalBandWidth =
+    transitionWidth / numberOfBands;
 
 
   /*
-   * =================================================
-   * INNER GLOW WIDTH
-   * =================================================
+   * feMorphology works BEFORE the text's scale transform.
    *
-   * Requested erosion radius factor = 2.
+   * Therefore we need to convert final pixels back into the
+   * original SVG coordinate system.
    *
-   * The text itself is later scaled to the
-   * 1920x1080 output, so this produces a relatively
-   * shallow inner glow.
+   * Because scaleX and scaleY can be different, we create
+   * separate horizontal and vertical compensation.
+   *
+   * SVG feMorphology uses a radius in the filter's coordinate
+   * system. Using the smaller scale factor prevents the band
+   * from becoming wider than requested in either direction.
    */
 
-  const erosion =
-    document.createElementNS(
-      NS,
-      "feMorphology"
+  const sourceBandWidth =
+    finalBandWidth /
+    Math.min(
+      scaleX,
+      scaleY
     );
 
-  erosion.setAttribute(
-    "in",
-    "SourceAlpha"
-  );
 
-  erosion.setAttribute(
-    "operator",
-    "erode"
-  );
+  // ===========================================================
+  // CREATE PROGRESSIVELY ERODED SHAPES
+  // ===========================================================
 
-  erosion.setAttribute(
-    "radius",
-    "2"
-  );
+  const erosion = [];
 
-  erosion.setAttribute(
-    "result",
-    "eroded"
-  );
-
-  filter.appendChild(
-    erosion
-  );
+  /*
+   * Original text.
+   */
+  erosion[0] =
+    "SourceAlpha";
 
 
   /*
-   * =================================================
-   * CREATE INNER EDGE
-   * =================================================
+   * Create each successive erosion.
    *
-   * Original letter minus the eroded letter.
-   *
-   * This leaves only the inside edge.
+   * Each step moves exactly one band farther inward.
    */
 
-  const edge =
-    document.createElementNS(
-      NS,
-      "feComposite"
+  for (
+    let i = 1;
+    i <= numberOfBands;
+    i++
+  ) {
+
+    const morphology =
+      document.createElementNS(
+        NS,
+        "feMorphology"
+      );
+
+    morphology.setAttribute(
+      "in",
+      erosion[i - 1]
     );
 
-  edge.setAttribute(
-    "in",
-    "SourceAlpha"
-  );
-
-  edge.setAttribute(
-    "in2",
-    "eroded"
-  );
-
-  edge.setAttribute(
-    "operator",
-    "out"
-  );
-
-  edge.setAttribute(
-    "result",
-    "edge"
-  );
-
-  filter.appendChild(
-    edge
-  );
-
-
-  /*
-   * =================================================
-   * SOFTEN THE EDGE
-   * =================================================
-   *
-   * A small blur makes the opacity transition
-   * continuous instead of creating a hard boundary.
-   */
-
-  const blur =
-    document.createElementNS(
-      NS,
-      "feGaussianBlur"
+    morphology.setAttribute(
+      "operator",
+      "erode"
     );
 
-  blur.setAttribute(
-    "in",
-    "edge"
-  );
-
-  blur.setAttribute(
-    "stdDeviation",
-    "1"
-  );
-
-  blur.setAttribute(
-    "result",
-    "softEdge"
-  );
-
-  filter.appendChild(
-    blur
-  );
-
-
-  /*
-   * =================================================
-   * MAKE FADE MORE LINEAR
-   * =================================================
-   *
-   * Convert the blurred alpha into a much more
-   * linear-looking fade.
-   */
-
-  const transfer =
-    document.createElementNS(
-      NS,
-      "feComponentTransfer"
+    /*
+     * Every step is exactly one band width.
+     */
+    morphology.setAttribute(
+      "radius",
+      sourceBandWidth
     );
 
-  transfer.setAttribute(
-    "in",
-    "softEdge"
-  );
-
-  const alpha =
-    document.createElementNS(
-      NS,
-      "feFuncA"
+    morphology.setAttribute(
+      "result",
+      `erosion_${i}`
     );
 
-  alpha.setAttribute(
-    "type",
-    "linear"
-  );
-
-  alpha.setAttribute(
-    "slope",
-    "1"
-  );
-
-  alpha.setAttribute(
-    "intercept",
-    "0"
-  );
-
-  transfer.appendChild(
-    alpha
-  );
-
-  filter.appendChild(
-    transfer
-  );
-
-
-  /*
-   * =================================================
-   * COLORIZE THE ALPHA
-   * =================================================
-   */
-
-  const flood =
-    document.createElementNS(
-      NS,
-      "feFlood"
+    filter.appendChild(
+      morphology
     );
 
-  flood.setAttribute(
-    "flood-color",
-    color
-  );
-
-  flood.setAttribute(
-    "flood-opacity",
-    "1"
-  );
-
-  flood.setAttribute(
-    "result",
-    "color"
-  );
-
-  filter.appendChild(
-    flood
-  );
+    erosion[i] =
+      `erosion_${i}`;
+  }
 
 
-  const colored =
-    document.createElementNS(
-      NS,
-      "feComposite"
+  // ===========================================================
+  // OPACITY VALUES
+  // ===========================================================
+
+  const opacities = [];
+
+  for (
+    let i = 0;
+    i < numberOfBands;
+    i++
+  ) {
+
+    /*
+     * 1.0, 0.9, 0.8 ... 0.1
+     */
+    opacities.push(
+      1 -
+      (i / numberOfBands)
     );
 
-  colored.setAttribute(
-    "in",
-    "color"
-  );
-
-  colored.setAttribute(
-    "in2",
-    "softEdge"
-  );
-
-  colored.setAttribute(
-    "operator",
-    "in"
-  );
-
-  colored.setAttribute(
-    "result",
-    "coloredGlow"
-  );
-
-  filter.appendChild(
-    colored
-  );
+  }
 
 
-  /*
-   * =================================================
-   * OUTPUT ONLY THE COLORED GLOW
-   * =================================================
-   *
-   * IMPORTANT:
-   * There is deliberately NO white text here.
-   *
-   * The result of this filter is transparent
-   * everywhere except where the inner glow exists.
-   */
+  // ===========================================================
+  // MERGE ALL BANDS
+  // ===========================================================
 
-  const output =
+  const merge =
     document.createElementNS(
       NS,
       "feMerge"
     );
 
-  const node =
-    document.createElementNS(
-      NS,
-      "feMergeNode"
+
+  // ===========================================================
+  // CREATE EACH BAND
+  // ===========================================================
+
+  for (
+    let i = 0;
+    i < numberOfBands;
+    i++
+  ) {
+
+    /*
+     * IMPORTANT:
+     *
+     * Band 0:
+     *
+     *   Original
+     *      MINUS
+     *   Erosion 1
+     *
+     * Band 1:
+     *
+     *   Erosion 1
+     *      MINUS
+     *   Erosion 2
+     *
+     * etc.
+     *
+     * This guarantees the bands are adjacent.
+     */
+
+    const band =
+      document.createElementNS(
+        NS,
+        "feComposite"
+      );
+
+    band.setAttribute(
+      "in",
+      erosion[i]
     );
 
-  node.setAttribute(
-    "in",
-    "coloredGlow"
-  );
+    band.setAttribute(
+      "in2",
+      erosion[i + 1]
+    );
 
-  output.appendChild(
-    node
-  );
+    band.setAttribute(
+      "operator",
+      "out"
+    );
+
+    band.setAttribute(
+      "result",
+      `band_${i}`
+    );
+
+    filter.appendChild(
+      band
+    );
+
+
+    // ---------------------------------------------------------
+    // COLORIZE BAND
+    // ---------------------------------------------------------
+
+    const flood =
+      document.createElementNS(
+        NS,
+        "feFlood"
+      );
+
+    flood.setAttribute(
+      "flood-color",
+      glowColor
+    );
+
+    flood.setAttribute(
+      "flood-opacity",
+      opacities[i]
+    );
+
+    flood.setAttribute(
+      "result",
+      `color_${i}`
+    );
+
+    filter.appendChild(
+      flood
+    );
+
+
+    const colorize =
+      document.createElementNS(
+        NS,
+        "feComposite"
+      );
+
+    colorize.setAttribute(
+      "in",
+      `color_${i}`
+    );
+
+    colorize.setAttribute(
+      "in2",
+      `band_${i}`
+    );
+
+    colorize.setAttribute(
+      "operator",
+      "in"
+    );
+
+    colorize.setAttribute(
+      "result",
+      `coloredBand_${i}`
+    );
+
+    filter.appendChild(
+      colorize
+    );
+
+
+    // ---------------------------------------------------------
+    // ADD TO MERGE
+    // ---------------------------------------------------------
+
+    const node =
+      document.createElementNS(
+        NS,
+        "feMergeNode"
+      );
+
+    node.setAttribute(
+      "in",
+      `coloredBand_${i}`
+    );
+
+    merge.appendChild(
+      node
+    );
+
+  }
+
+
+  // ===========================================================
+  // FINAL OUTPUT
+  // ===========================================================
 
   filter.appendChild(
-    output
+    merge
   );
-
 
   defs.appendChild(
     filter
   );
+
+  return filter;
 }
 
 
-// ==================================================
-// ADD LINE
-// ==================================================
+// =============================================================
+// CREATE INNER GLOW TEXT
+// =============================================================
 
-function addLine(line, index) {
+function createInnerGlow(
+  item,
+  index
+) {
+
+  const filterId =
+    `innerGlow_${index}_${Date.now()}`;
+
+  createInnerGlowFilter(
+    filterId,
+    item.scaleX,
+    item.scaleY
+  );
+
+
+  const glowText =
+    createText(item.line);
+
+  glowText.setAttribute(
+    "fill",
+    "white"
+  );
+
+  glowText.setAttribute(
+    "filter",
+    `url(#${filterId})`
+  );
+
+  glowText.setAttribute(
+    "transform",
+    item.transform
+  );
+
+
+  /*
+   * Draw the transparency bands before the black overlay.
+   */
+
+  svg.appendChild(
+    glowText
+  );
+}
+
+
+// =============================================================
+// RENDER
+// =============================================================
+
+function render() {
+
+  // -----------------------------------------------------------
+  // Clear SVG except <defs>
+  // -----------------------------------------------------------
+
+  while (svg.children.length > 1) {
+
+    svg.removeChild(
+      svg.lastChild
+    );
+
+  }
+
+
+  // -----------------------------------------------------------
+  // Clear mask except background rectangle
+  // -----------------------------------------------------------
+
+  while (mask.children.length > 1) {
+
+    mask.removeChild(
+      mask.lastChild
+    );
+
+  }
+
+
+  // -----------------------------------------------------------
+  // Remove previous filters
+  // -----------------------------------------------------------
+
+  defs
+    .querySelectorAll(
+      "filter"
+    )
+    .forEach(
+      filter => filter.remove()
+    );
+
 
   const lines =
     text.split("\n");
 
-  const boxH =
-    targetH / lines.length;
+
+  // -----------------------------------------------------------
+  // Calculate all text geometry first.
+  // -----------------------------------------------------------
+
+  const measurements = [];
+
+  for (
+    let i = 0;
+    i < lines.length;
+    i++
+  ) {
+
+    measurements.push(
+      calculateLine(
+        lines[i],
+        i,
+        lines
+      )
+    );
+
+  }
 
 
-  // ------------------------------------------------
-  // Measure
-  // ------------------------------------------------
+  // ===========================================================
+  // CREATE TRANSPARENCY BANDS
+  // ===========================================================
 
-  const measurement =
-    createText(line);
+  if (glowColor) {
+  measurements.forEach(
+    (item, index) => {
 
-  svg.appendChild(
-    measurement
+      createInnerGlow(
+        item,
+        index
+      );
+
+    }
   );
+}
 
 
-  requestAnimationFrame(() => {
+  // ===========================================================
+  // CUTOUT MASK
+  // ===========================================================
 
-    const bbox =
-      measurement.getBBox();
+  measurements.forEach(
+    item => {
 
-
-    const shrinkFactor =
-      0.3;
-
-    const newHeight =
-      bbox.height *
-      (1 - shrinkFactor);
-
-    const deltaY =
-      (bbox.height - newHeight) / 2;
-
-
-    const objX =
-      bbox.x;
-
-    const objY =
-      bbox.y + deltaY;
-
-    const objW =
-      bbox.width;
-
-    const objH =
-      newHeight;
-
-
-    const scaleX =
-      targetW / objW;
-
-    const scaleY =
-      boxH / objH;
-
-    const offsetY =
-      index * boxH;
-
-
-    const transform =
-      `translate(0,${offsetY}) ` +
-      `scale(${scaleX},${scaleY}) ` +
-      `translate(${-objX},${-objY})`;
-
-
-    // =================================================
-    // INNER GLOW
-    // =================================================
-
-    if (glowColor) {
-
-      const filterId =
-        `innerGlow_${index}_${Date.now()}`;
-
-
-      createInnerGlowFilter(
-        filterId,
-        glowColor
-      );
-
-
-      /*
-       * This text is ONLY used to generate the glow.
-       *
-       * It does NOT create a white visible letter.
-       */
-
-      const glowText =
-        createText(line);
-
-      glowText.setAttribute(
-        "fill",
-        "white"
-      );
-
-      glowText.setAttribute(
-        "filter",
-        `url(#${filterId})`
-      );
-
-
-      const glowGroup =
+      const group =
         document.createElementNS(
           NS,
           "g"
         );
 
-      glowGroup.setAttribute(
+      group.setAttribute(
         "transform",
-        transform
+        item.transform
       );
 
-      glowGroup.appendChild(
-        glowText
+
+      const hole =
+        createText(item.line);
+
+      hole.setAttribute(
+        "fill",
+        "black"
       );
 
-      svg.appendChild(
-        glowGroup
+
+      group.appendChild(
+        hole
       );
+
+      mask.appendChild(
+        group
+      );
+
     }
+  );
 
 
-    // =================================================
-    // CUTOUT MASK
-    // =================================================
-
-    const maskGroup =
-      document.createElementNS(
-        NS,
-        "g"
-      );
-
-    maskGroup.setAttribute(
-      "transform",
-      transform
-    );
-
-
-    const maskText =
-      createText(line);
-
-    maskText.setAttribute(
-      "fill",
-      "black"
-    );
-
-    maskGroup.appendChild(
-      maskText
-    );
-
-    mask.appendChild(
-      maskGroup
-    );
-
-
-    svg.removeChild(
-      measurement
-    );
-
-  });
-}
-
-
-// ==================================================
-// RENDER
-// ==================================================
-
-function render() {
-
-  // Remove everything except defs
-  while (svg.children.length > 1) {
-    svg.removeChild(
-      svg.lastChild
-    );
-  }
-
-
-  // Clear mask
-  while (mask.children.length > 1) {
-    mask.removeChild(
-      mask.lastChild
-    );
-  }
-
-
-  // =================================================
-  // BLACK BACKGROUND
-  // =================================================
+  // ===========================================================
+  // BLACK OVERLAY
+  // ===========================================================
 
   const overlay =
     document.createElementNS(
@@ -728,40 +930,19 @@ function render() {
   svg.appendChild(
     overlay
   );
-
-
-  // =================================================
-  // TEXT LINES
-  // =================================================
-
-  const lines =
-    text.split("\n");
-
-
-  for (
-    let i = 0;
-    i < lines.length;
-    i++
-  ) {
-
-    addLine(
-      lines[i],
-      i
-    );
-  }
 }
 
 
-// ==================================================
+// =============================================================
 // INITIAL RENDER
-// ==================================================
+// =============================================================
 
 render();
 
 
-// ==================================================
+// =============================================================
 // SUBMIT
-// ==================================================
+// =============================================================
 
 document
   .getElementById("submit")
@@ -776,6 +957,7 @@ document
           .toUpperCase();
 
       render();
+
     }
   );
 
