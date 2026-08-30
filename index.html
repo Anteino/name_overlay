@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+
   <style>
     html, body {
       margin: 0;
@@ -16,13 +17,20 @@
     }
   </style>
 </head>
+
 <body>
 
 <svg id="svg" viewBox="0 0 1920 1080">
 
   <defs>
     <mask id="cutoutMask">
-      <rect x="0" y="0" width="1920" height="1080" fill="white"/>
+      <rect
+        x="0"
+        y="0"
+        width="1920"
+        height="1080"
+        fill="white"
+      />
     </mask>
   </defs>
 
@@ -30,6 +38,7 @@
 
 <div style="padding:20px;font-family:sans-serif;">
   <div style="display:flex;align-items:flex-start;gap:12px;">
+
     <textarea
       id="editor"
       rows="4"
@@ -42,121 +51,734 @@
     >
       Submit
     </button>
+
   </div>
 </div>
 
+
 <script>
-// Get "name" from the URL.
-// If it isn't specified, use "Silly\nGoose".
-const params = new URLSearchParams(window.location.search);
-let text = params.get("name") ?? "Silly\nGoose";
+
+// ==================================================
+// URL PARAMETERS
+// ==================================================
+
+let text = "Silly\nGoose";
+let glowColor = null;
+
+const params =
+  new URLSearchParams(window.location.search);
+
+if (params.has("name")) {
+  text = params.get("name");
+}
+
+if (params.has("color")) {
+  glowColor = params.get("color");
+}
+
+
+// Support index.html&name=... as well
+const url = window.location.href;
+
+if (!params.has("name")) {
+
+  const match =
+    url.match(/[?&]name=([^&]*)/);
+
+  if (match) {
+    try {
+      text = decodeURIComponent(match[1]);
+    } catch (e) {}
+  }
+}
+
+if (!params.has("color")) {
+
+  const match =
+    url.match(/[?&]color=([^&]*)/);
+
+  if (match) {
+    try {
+      glowColor = decodeURIComponent(match[1]);
+    } catch (e) {}
+  }
+}
 
 text = text.toUpperCase();
 
-// Put the initial value into the textarea
-document.getElementById("editor").value = text;
 
-const NS = "http://www.w3.org/2000/svg";
-const svg = document.getElementById("svg");
+// ==================================================
+// SVG SETUP
+// ==================================================
+
+const NS =
+  "http://www.w3.org/2000/svg";
+
+const svg =
+  document.getElementById("svg");
+
+const defs =
+  svg.querySelector("defs");
+
+const mask =
+  document.getElementById("cutoutMask");
 
 const targetW = 1920;
 const targetH = 1080;
 
-const mask = document.getElementById("cutoutMask");
 
-function addLine(line, index) {
-  const lines = text.split("\n");
-  const boxH = targetH / lines.length;
+// Keep editor empty
+document.getElementById(
+  "editor"
+).value = "";
 
-  const txt = document.createElementNS(NS, "text");
+
+// ==================================================
+// TEXT CREATOR
+// ==================================================
+
+function createText(line) {
+
+  const txt =
+    document.createElementNS(
+      NS,
+      "text"
+    );
+
   txt.textContent = line;
 
-  txt.setAttribute("font-size", "160");
-  txt.setAttribute("font-family", "Impact, Arial Black, Arial, sans-serif");
-  txt.setAttribute("font-weight", "900");
+  txt.setAttribute(
+    "font-size",
+    "160"
+  );
 
-  txt.setAttribute("x", 0);
-  txt.setAttribute("y", 0);
+  txt.setAttribute(
+    "font-family",
+    "Impact, Arial Black, Arial, sans-serif"
+  );
 
-  svg.appendChild(txt);
+  txt.setAttribute(
+    "font-weight",
+    "900"
+  );
+
+  txt.setAttribute(
+    "x",
+    "0"
+  );
+
+  txt.setAttribute(
+    "y",
+    "0"
+  );
+
+  return txt;
+}
+
+
+// ==================================================
+// CREATE INNER GLOW FILTER
+// ==================================================
+
+function createInnerGlowFilter(
+  filterId,
+  color
+) {
+
+  const filter =
+    document.createElementNS(
+      NS,
+      "filter"
+    );
+
+  filter.setAttribute(
+    "id",
+    filterId
+  );
+
+  filter.setAttribute(
+    "x",
+    "-20%"
+  );
+
+  filter.setAttribute(
+    "y",
+    "-20%"
+  );
+
+  filter.setAttribute(
+    "width",
+    "140%"
+  );
+
+  filter.setAttribute(
+    "height",
+    "140%"
+  );
+
+
+  /*
+   * =================================================
+   * INNER GLOW WIDTH
+   * =================================================
+   *
+   * Requested erosion radius factor = 2.
+   *
+   * The text itself is later scaled to the
+   * 1920x1080 output, so this produces a relatively
+   * shallow inner glow.
+   */
+
+  const erosion =
+    document.createElementNS(
+      NS,
+      "feMorphology"
+    );
+
+  erosion.setAttribute(
+    "in",
+    "SourceAlpha"
+  );
+
+  erosion.setAttribute(
+    "operator",
+    "erode"
+  );
+
+  erosion.setAttribute(
+    "radius",
+    "2"
+  );
+
+  erosion.setAttribute(
+    "result",
+    "eroded"
+  );
+
+  filter.appendChild(
+    erosion
+  );
+
+
+  /*
+   * =================================================
+   * CREATE INNER EDGE
+   * =================================================
+   *
+   * Original letter minus the eroded letter.
+   *
+   * This leaves only the inside edge.
+   */
+
+  const edge =
+    document.createElementNS(
+      NS,
+      "feComposite"
+    );
+
+  edge.setAttribute(
+    "in",
+    "SourceAlpha"
+  );
+
+  edge.setAttribute(
+    "in2",
+    "eroded"
+  );
+
+  edge.setAttribute(
+    "operator",
+    "out"
+  );
+
+  edge.setAttribute(
+    "result",
+    "edge"
+  );
+
+  filter.appendChild(
+    edge
+  );
+
+
+  /*
+   * =================================================
+   * SOFTEN THE EDGE
+   * =================================================
+   *
+   * A small blur makes the opacity transition
+   * continuous instead of creating a hard boundary.
+   */
+
+  const blur =
+    document.createElementNS(
+      NS,
+      "feGaussianBlur"
+    );
+
+  blur.setAttribute(
+    "in",
+    "edge"
+  );
+
+  blur.setAttribute(
+    "stdDeviation",
+    "1"
+  );
+
+  blur.setAttribute(
+    "result",
+    "softEdge"
+  );
+
+  filter.appendChild(
+    blur
+  );
+
+
+  /*
+   * =================================================
+   * MAKE FADE MORE LINEAR
+   * =================================================
+   *
+   * Convert the blurred alpha into a much more
+   * linear-looking fade.
+   */
+
+  const transfer =
+    document.createElementNS(
+      NS,
+      "feComponentTransfer"
+    );
+
+  transfer.setAttribute(
+    "in",
+    "softEdge"
+  );
+
+  const alpha =
+    document.createElementNS(
+      NS,
+      "feFuncA"
+    );
+
+  alpha.setAttribute(
+    "type",
+    "linear"
+  );
+
+  alpha.setAttribute(
+    "slope",
+    "1"
+  );
+
+  alpha.setAttribute(
+    "intercept",
+    "0"
+  );
+
+  transfer.appendChild(
+    alpha
+  );
+
+  filter.appendChild(
+    transfer
+  );
+
+
+  /*
+   * =================================================
+   * COLORIZE THE ALPHA
+   * =================================================
+   */
+
+  const flood =
+    document.createElementNS(
+      NS,
+      "feFlood"
+    );
+
+  flood.setAttribute(
+    "flood-color",
+    color
+  );
+
+  flood.setAttribute(
+    "flood-opacity",
+    "1"
+  );
+
+  flood.setAttribute(
+    "result",
+    "color"
+  );
+
+  filter.appendChild(
+    flood
+  );
+
+
+  const colored =
+    document.createElementNS(
+      NS,
+      "feComposite"
+    );
+
+  colored.setAttribute(
+    "in",
+    "color"
+  );
+
+  colored.setAttribute(
+    "in2",
+    "softEdge"
+  );
+
+  colored.setAttribute(
+    "operator",
+    "in"
+  );
+
+  colored.setAttribute(
+    "result",
+    "coloredGlow"
+  );
+
+  filter.appendChild(
+    colored
+  );
+
+
+  /*
+   * =================================================
+   * OUTPUT ONLY THE COLORED GLOW
+   * =================================================
+   *
+   * IMPORTANT:
+   * There is deliberately NO white text here.
+   *
+   * The result of this filter is transparent
+   * everywhere except where the inner glow exists.
+   */
+
+  const output =
+    document.createElementNS(
+      NS,
+      "feMerge"
+    );
+
+  const node =
+    document.createElementNS(
+      NS,
+      "feMergeNode"
+    );
+
+  node.setAttribute(
+    "in",
+    "coloredGlow"
+  );
+
+  output.appendChild(
+    node
+  );
+
+  filter.appendChild(
+    output
+  );
+
+
+  defs.appendChild(
+    filter
+  );
+}
+
+
+// ==================================================
+// ADD LINE
+// ==================================================
+
+function addLine(line, index) {
+
+  const lines =
+    text.split("\n");
+
+  const boxH =
+    targetH / lines.length;
+
+
+  // ------------------------------------------------
+  // Measure
+  // ------------------------------------------------
+
+  const measurement =
+    createText(line);
+
+  svg.appendChild(
+    measurement
+  );
+
 
   requestAnimationFrame(() => {
-    const bbox = txt.getBBox();
 
-    const shrinkFactor = 0.3;
-    const newHeight = bbox.height * (1 - shrinkFactor);
-    const deltaY = (bbox.height - newHeight) / 2;
+    const bbox =
+      measurement.getBBox();
 
-    const objX = bbox.x;
-    const objY = bbox.y + deltaY;
-    const objW = bbox.width;
-    const objH = newHeight;
 
-    const scaleX = targetW / objW;
-    const scaleY = boxH / objH;
+    const shrinkFactor =
+      0.3;
 
-    const offsetY = index * boxH;
+    const newHeight =
+      bbox.height *
+      (1 - shrinkFactor);
 
-    const g = document.createElementNS(NS, "g");
+    const deltaY =
+      (bbox.height - newHeight) / 2;
+
+
+    const objX =
+      bbox.x;
+
+    const objY =
+      bbox.y + deltaY;
+
+    const objW =
+      bbox.width;
+
+    const objH =
+      newHeight;
+
+
+    const scaleX =
+      targetW / objW;
+
+    const scaleY =
+      boxH / objH;
+
+    const offsetY =
+      index * boxH;
+
 
     const transform =
       `translate(0,${offsetY}) ` +
       `scale(${scaleX},${scaleY}) ` +
       `translate(${-objX},${-objY})`;
 
-    g.setAttribute("transform", transform);
 
-    // CUTOUT TEXT
-    const hole = document.createElementNS(NS, "text");
-    hole.textContent = line;
+    // =================================================
+    // INNER GLOW
+    // =================================================
 
-    hole.setAttribute("font-size", "160");
-    hole.setAttribute("font-family", "Impact, Arial Black, Arial, sans-serif");
-    hole.setAttribute("font-weight", "900");
+    if (glowColor) {
 
-    hole.setAttribute("fill", "black");
+      const filterId =
+        `innerGlow_${index}_${Date.now()}`;
 
-    g.appendChild(hole);
-    mask.appendChild(g);
 
-    svg.removeChild(txt);
+      createInnerGlowFilter(
+        filterId,
+        glowColor
+      );
+
+
+      /*
+       * This text is ONLY used to generate the glow.
+       *
+       * It does NOT create a white visible letter.
+       */
+
+      const glowText =
+        createText(line);
+
+      glowText.setAttribute(
+        "fill",
+        "white"
+      );
+
+      glowText.setAttribute(
+        "filter",
+        `url(#${filterId})`
+      );
+
+
+      const glowGroup =
+        document.createElementNS(
+          NS,
+          "g"
+        );
+
+      glowGroup.setAttribute(
+        "transform",
+        transform
+      );
+
+      glowGroup.appendChild(
+        glowText
+      );
+
+      svg.appendChild(
+        glowGroup
+      );
+    }
+
+
+    // =================================================
+    // CUTOUT MASK
+    // =================================================
+
+    const maskGroup =
+      document.createElementNS(
+        NS,
+        "g"
+      );
+
+    maskGroup.setAttribute(
+      "transform",
+      transform
+    );
+
+
+    const maskText =
+      createText(line);
+
+    maskText.setAttribute(
+      "fill",
+      "black"
+    );
+
+    maskGroup.appendChild(
+      maskText
+    );
+
+    mask.appendChild(
+      maskGroup
+    );
+
+
+    svg.removeChild(
+      measurement
+    );
+
   });
 }
+
+
+// ==================================================
+// RENDER
+// ==================================================
 
 function render() {
-  // Clear previous overlay and mask contents
+
+  // Remove everything except defs
   while (svg.children.length > 1) {
-    svg.removeChild(svg.lastChild);
+    svg.removeChild(
+      svg.lastChild
+    );
   }
 
+
+  // Clear mask
   while (mask.children.length > 1) {
-    mask.removeChild(mask.lastChild);
+    mask.removeChild(
+      mask.lastChild
+    );
   }
 
-  const lines = text.split("\n");
 
-  for (let i = 0; i < lines.length; i++) {
-    addLine(lines[i], i);
+  // =================================================
+  // BLACK BACKGROUND
+  // =================================================
+
+  const overlay =
+    document.createElementNS(
+      NS,
+      "rect"
+    );
+
+  overlay.setAttribute(
+    "x",
+    "0"
+  );
+
+  overlay.setAttribute(
+    "y",
+    "0"
+  );
+
+  overlay.setAttribute(
+    "width",
+    "1920"
+  );
+
+  overlay.setAttribute(
+    "height",
+    "1080"
+  );
+
+  overlay.setAttribute(
+    "fill",
+    "black"
+  );
+
+  overlay.setAttribute(
+    "mask",
+    "url(#cutoutMask)"
+  );
+
+
+  svg.appendChild(
+    overlay
+  );
+
+
+  // =================================================
+  // TEXT LINES
+  // =================================================
+
+  const lines =
+    text.split("\n");
+
+
+  for (
+    let i = 0;
+    i < lines.length;
+    i++
+  ) {
+
+    addLine(
+      lines[i],
+      i
+    );
   }
-
-  requestAnimationFrame(() => {
-    const overlay = document.createElementNS(NS, "rect");
-    overlay.setAttribute("x", "0");
-    overlay.setAttribute("y", "0");
-    overlay.setAttribute("width", "1920");
-    overlay.setAttribute("height", "1080");
-    overlay.setAttribute("fill", "black");
-    overlay.setAttribute("mask", "url(#cutoutMask)");
-    svg.appendChild(overlay);
-  });
 }
+
+
+// ==================================================
+// INITIAL RENDER
+// ==================================================
 
 render();
 
-document.getElementById("submit").addEventListener("click", () => {
-  text = document.getElementById("editor").value.toUpperCase();
-  render();
-});
+
+// ==================================================
+// SUBMIT
+// ==================================================
+
+document
+  .getElementById("submit")
+  .addEventListener(
+    "click",
+    () => {
+
+      text =
+        document
+          .getElementById("editor")
+          .value
+          .toUpperCase();
+
+      render();
+    }
+  );
+
 </script>
 
 </body>
