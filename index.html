@@ -1,23 +1,60 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-  <meta charset="UTF-8" />
+
+  <meta charset="UTF-8">
+
+  <!-- =========================================================
+       FORCE A 1920 x 1080 VIEWPORT
+       ========================================================= -->
+
+  <meta
+    name="viewport"
+    content="width=1920, height=1080, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+  >
 
   <style>
+
+    /* =========================================================
+       FIXED PAGE
+       ========================================================= */
+
     html,
     body {
       margin: 0;
       padding: 0;
+
+      width: 1920px;
+      height: 1080px;
+
+      min-width: 1920px;
+      min-height: 1080px;
+
+      max-width: 1920px;
+      max-height: 1080px;
+
       background: transparent;
+
       overflow: hidden;
+
+      /*
+       * Prevent browser text/layout scaling from affecting
+       * the overlay.
+       */
+      zoom: 1;
     }
+
 
     /* =========================================================
        FIXED 1920 x 1080 NAME STAGE
        ========================================================= */
 
     #overlayStage {
-      position: relative;
+      position: absolute;
+
+      left: 0;
+      top: 0;
 
       width: 1920px;
       height: 1080px;
@@ -30,6 +67,11 @@
 
       overflow: hidden;
     }
+
+
+    /* =========================================================
+       SVG
+       ========================================================= */
 
     #svg {
       position: absolute;
@@ -47,16 +89,29 @@
       max-height: 1080px;
 
       display: block;
+
       margin: 0;
       padding: 0;
+
+      /*
+       * Explicitly prevent any CSS scaling.
+       */
+      transform: none;
     }
+
 
     /* =========================================================
        CONTROLS
        ========================================================= */
 
     #controls {
+      position: absolute;
+
+      left: 0;
+      top: 1100px;
+
       padding: 20px;
+
       font-family: sans-serif;
 
       display: flex;
@@ -74,14 +129,18 @@
       padding: 8px 20px;
       height: fit-content;
     }
+
   </style>
+
 </head>
+
 
 <body>
 
-<!-- ===========================================================
+
+<!-- =========================================================
      1920 x 1080 OVERLAY
-     =========================================================== -->
+     ========================================================= -->
 
 <div id="overlayStage">
 
@@ -125,9 +184,9 @@
 </div>
 
 
-<!-- ===========================================================
+<!-- =========================================================
      EDITOR
-     =========================================================== -->
+     ========================================================= -->
 
 <div id="controls">
 
@@ -145,35 +204,20 @@
 
 <script>
 
+
 // =============================================================
 // PARAMETERS
 // =============================================================
 
 let text = "Silly\nGoose";
+
 let glowColor = null;
+
 
 /*
  * =============================================================
  * TRANSPARENCY TRANSITION WIDTH
  * =============================================================
- *
- * This is the TOTAL width of the transparency transition
- * in the FINAL 1920 x 1080 image.
- *
- * Examples:
- *
- *   5  = 5px total
- *   10 = 10px total
- *   20 = 20px total
- *   30 = 30px total
- *
- * There are always 10 bands.
- *
- * Therefore:
- *
- *   10px / 10 bands = approximately 1px per band
- *
- * Set this to whatever transition width you want.
  */
 
 const transitionWidth = 20;
@@ -181,26 +225,27 @@ const transitionWidth = 20;
 
 /*
  * Number of transparency bands.
- *
- * Keep this at 10 if you want:
- *
- * 100%, 90%, 80%, ... 10%
  */
+
 const numberOfBands = 5;
 
 
 const params =
   new URLSearchParams(window.location.search);
 
+
 if (params.has("name")) {
   text = params.get("name");
 }
+
 
 if (params.has("color")) {
   glowColor = params.get("color");
 }
 
-text = text.toUpperCase();
+
+text =
+  text.toUpperCase();
 
 
 // =============================================================
@@ -210,14 +255,18 @@ text = text.toUpperCase();
 const NS =
   "http://www.w3.org/2000/svg";
 
+
 const svg =
   document.getElementById("svg");
+
 
 const defs =
   svg.querySelector("defs");
 
+
 const mask =
   document.getElementById("cutoutMask");
+
 
 const targetW = 1920;
 const targetH = 1080;
@@ -235,34 +284,43 @@ function createText(line) {
       "text"
     );
 
-  txt.textContent = line;
+
+  txt.textContent =
+    line;
+
 
   txt.setAttribute(
     "font-size",
     "160"
   );
 
+
   txt.setAttribute(
     "font-family",
     "Impact, Arial Black, Arial, sans-serif"
   );
+
 
   txt.setAttribute(
     "font-weight",
     "900"
   );
 
+
   txt.setAttribute(
     "x",
     "0"
   );
+
 
   txt.setAttribute(
     "y",
     "0"
   );
 
+
   return txt;
+
 }
 
 
@@ -279,27 +337,32 @@ function calculateLine(
   const boxH =
     targetH / lines.length;
 
+
   const measurement =
     createText(line);
+
 
   svg.appendChild(
     measurement
   );
+
 
   const bbox =
     measurement.getBBox();
 
 
   /*
-   * Same vertical sizing behavior as the original.
+   * Same vertical sizing behavior as original.
    */
 
   const shrinkFactor =
     0.3;
 
+
   const newHeight =
     bbox.height *
     (1 - shrinkFactor);
+
 
   const deltaY =
     (bbox.height - newHeight) / 2;
@@ -308,11 +371,14 @@ function calculateLine(
   const objX =
     bbox.x;
 
+
   const objY =
     bbox.y + deltaY;
 
+
   const objW =
     bbox.width;
+
 
   const objH =
     newHeight;
@@ -321,8 +387,10 @@ function calculateLine(
   const scaleX =
     targetW / objW;
 
+
   const scaleY =
     boxH / objH;
+
 
   const offsetY =
     index * boxH;
@@ -342,34 +410,15 @@ function calculateLine(
   return {
     line,
     transform,
-
-    /*
-     * Save these because the inner bands need to compensate
-     * for the scaling later.
-     */
     scaleX,
     scaleY
   };
+
 }
 
 
 // =============================================================
-// CREATE THE 10 NESTED COLOR BANDS
-// =============================================================
-//
-// Each band is:
-//
-//   previous shape - next eroded shape
-//
-// Therefore every band:
-//
-//   • touches the next band
-//   • cannot overlap the next band
-//   • cannot leave a gap
-//
-// The erosion amount is calculated so that the resulting
-// distance in the FINAL 1920 x 1080 image is controlled by
-// transitionWidth.
+// CREATE INNER GLOW FILTER
 // =============================================================
 
 function createInnerGlowFilter(
@@ -384,25 +433,30 @@ function createInnerGlowFilter(
       "filter"
     );
 
+
   filter.setAttribute(
     "id",
     id
   );
+
 
   filter.setAttribute(
     "x",
     "-10%"
   );
 
+
   filter.setAttribute(
     "y",
     "-10%"
   );
 
+
   filter.setAttribute(
     "width",
     "120%"
   );
+
 
   filter.setAttribute(
     "height",
@@ -414,34 +468,9 @@ function createInnerGlowFilter(
   // CALCULATE FINAL PIXEL WIDTH
   // ===========================================================
 
-  /*
-   * We want the whole transition to be transitionWidth pixels
-   * wide in the FINAL image.
-   *
-   * Each band therefore represents:
-   *
-   *     transitionWidth / numberOfBands
-   *
-   * final pixels.
-   */
-
   const finalBandWidth =
     transitionWidth / numberOfBands;
 
-
-  /*
-   * feMorphology works BEFORE the text's scale transform.
-   *
-   * Therefore we need to convert final pixels back into the
-   * original SVG coordinate system.
-   *
-   * Because scaleX and scaleY can be different, we create
-   * separate horizontal and vertical compensation.
-   *
-   * SVG feMorphology uses a radius in the filter's coordinate
-   * system. Using the smaller scale factor prevents the band
-   * from becoming wider than requested in either direction.
-   */
 
   const sourceBandWidth =
     finalBandWidth /
@@ -457,18 +486,10 @@ function createInnerGlowFilter(
 
   const erosion = [];
 
-  /*
-   * Original text.
-   */
+
   erosion[0] =
     "SourceAlpha";
 
-
-  /*
-   * Create each successive erosion.
-   *
-   * Each step moves exactly one band farther inward.
-   */
 
   for (
     let i = 1;
@@ -482,35 +503,39 @@ function createInnerGlowFilter(
         "feMorphology"
       );
 
+
     morphology.setAttribute(
       "in",
       erosion[i - 1]
     );
+
 
     morphology.setAttribute(
       "operator",
       "erode"
     );
 
-    /*
-     * Every step is exactly one band width.
-     */
+
     morphology.setAttribute(
       "radius",
       sourceBandWidth
     );
+
 
     morphology.setAttribute(
       "result",
       `erosion_${i}`
     );
 
+
     filter.appendChild(
       morphology
     );
 
+
     erosion[i] =
       `erosion_${i}`;
+
   }
 
 
@@ -520,15 +545,13 @@ function createInnerGlowFilter(
 
   const opacities = [];
 
+
   for (
     let i = 0;
     i < numberOfBands;
     i++
   ) {
 
-    /*
-     * 1.0, 0.9, 0.8 ... 0.1
-     */
     opacities.push(
       1 -
       (i / numberOfBands)
@@ -558,51 +581,36 @@ function createInnerGlowFilter(
     i++
   ) {
 
-    /*
-     * IMPORTANT:
-     *
-     * Band 0:
-     *
-     *   Original
-     *      MINUS
-     *   Erosion 1
-     *
-     * Band 1:
-     *
-     *   Erosion 1
-     *      MINUS
-     *   Erosion 2
-     *
-     * etc.
-     *
-     * This guarantees the bands are adjacent.
-     */
-
     const band =
       document.createElementNS(
         NS,
         "feComposite"
       );
 
+
     band.setAttribute(
       "in",
       erosion[i]
     );
+
 
     band.setAttribute(
       "in2",
       erosion[i + 1]
     );
 
+
     band.setAttribute(
       "operator",
       "out"
     );
 
+
     band.setAttribute(
       "result",
       `band_${i}`
     );
+
 
     filter.appendChild(
       band
@@ -619,20 +627,24 @@ function createInnerGlowFilter(
         "feFlood"
       );
 
+
     flood.setAttribute(
       "flood-color",
       glowColor
     );
+
 
     flood.setAttribute(
       "flood-opacity",
       opacities[i]
     );
 
+
     flood.setAttribute(
       "result",
       `color_${i}`
     );
+
 
     filter.appendChild(
       flood
@@ -645,25 +657,30 @@ function createInnerGlowFilter(
         "feComposite"
       );
 
+
     colorize.setAttribute(
       "in",
       `color_${i}`
     );
+
 
     colorize.setAttribute(
       "in2",
       `band_${i}`
     );
 
+
     colorize.setAttribute(
       "operator",
       "in"
     );
 
+
     colorize.setAttribute(
       "result",
       `coloredBand_${i}`
     );
+
 
     filter.appendChild(
       colorize
@@ -680,10 +697,12 @@ function createInnerGlowFilter(
         "feMergeNode"
       );
 
+
     node.setAttribute(
       "in",
       `coloredBand_${i}`
     );
+
 
     merge.appendChild(
       node
@@ -700,11 +719,14 @@ function createInnerGlowFilter(
     merge
   );
 
+
   defs.appendChild(
     filter
   );
 
+
   return filter;
+
 }
 
 
@@ -720,6 +742,7 @@ function createInnerGlow(
   const filterId =
     `innerGlow_${index}_${Date.now()}`;
 
+
   createInnerGlowFilter(
     filterId,
     item.scaleX,
@@ -728,17 +751,22 @@ function createInnerGlow(
 
 
   const glowText =
-    createText(item.line);
+    createText(
+      item.line
+    );
+
 
   glowText.setAttribute(
     "fill",
     "white"
   );
 
+
   glowText.setAttribute(
     "filter",
     `url(#${filterId})`
   );
+
 
   glowText.setAttribute(
     "transform",
@@ -753,6 +781,7 @@ function createInnerGlow(
   svg.appendChild(
     glowText
   );
+
 }
 
 
@@ -762,11 +791,14 @@ function createInnerGlow(
 
 function render() {
 
+
   // -----------------------------------------------------------
   // Clear SVG except <defs>
   // -----------------------------------------------------------
 
-  while (svg.children.length > 1) {
+  while (
+    svg.children.length > 1
+  ) {
 
     svg.removeChild(
       svg.lastChild
@@ -779,7 +811,9 @@ function render() {
   // Clear mask except background rectangle
   // -----------------------------------------------------------
 
-  while (mask.children.length > 1) {
+  while (
+    mask.children.length > 1
+  ) {
 
     mask.removeChild(
       mask.lastChild
@@ -797,7 +831,8 @@ function render() {
       "filter"
     )
     .forEach(
-      filter => filter.remove()
+      filter =>
+        filter.remove()
     );
 
 
@@ -810,6 +845,7 @@ function render() {
   // -----------------------------------------------------------
 
   const measurements = [];
+
 
   for (
     let i = 0;
@@ -833,17 +869,22 @@ function render() {
   // ===========================================================
 
   if (glowColor) {
-  measurements.forEach(
-    (item, index) => {
 
-      createInnerGlow(
+    measurements.forEach(
+      (
         item,
         index
-      );
+      ) => {
 
-    }
-  );
-}
+        createInnerGlow(
+          item,
+          index
+        );
+
+      }
+    );
+
+  }
 
 
   // ===========================================================
@@ -859,6 +900,7 @@ function render() {
           "g"
         );
 
+
       group.setAttribute(
         "transform",
         item.transform
@@ -866,7 +908,10 @@ function render() {
 
 
       const hole =
-        createText(item.line);
+        createText(
+          item.line
+        );
+
 
       hole.setAttribute(
         "fill",
@@ -877,6 +922,7 @@ function render() {
       group.appendChild(
         hole
       );
+
 
       mask.appendChild(
         group
@@ -896,30 +942,36 @@ function render() {
       "rect"
     );
 
+
   overlay.setAttribute(
     "x",
     "0"
   );
+
 
   overlay.setAttribute(
     "y",
     "0"
   );
 
+
   overlay.setAttribute(
     "width",
     "1920"
   );
+
 
   overlay.setAttribute(
     "height",
     "1080"
   );
 
+
   overlay.setAttribute(
     "fill",
     "black"
   );
+
 
   overlay.setAttribute(
     "mask",
@@ -930,6 +982,7 @@ function render() {
   svg.appendChild(
     overlay
   );
+
 }
 
 
@@ -956,12 +1009,15 @@ document
           .value
           .toUpperCase();
 
+
       render();
 
     }
   );
 
+
 </script>
 
 </body>
+
 </html>
