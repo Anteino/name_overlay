@@ -81,35 +81,29 @@
       left: 0;
       top: 1100px;
 
-      padding: 20px;
+      padding: 10px;
 
       font-family: sans-serif;
 
       display: flex;
       align-items: flex-start;
-      gap: 12px;
+      gap: 6px;
     }
 
     #editor {
-      width: 800px;
-      font-size: 200px;
+      width: 400px;
+      font-size: 50px;
     }
 
     #submit {
-      font-size: 200px;
-      padding: 8px 20px;
+      font-size: 50px;
+      padding: 4px 10px;
       height: fit-content;
     }
 
 
     /* =========================================================
        DEBUG
-       =========================================================
-
-       Hidden by default.
-
-       Change display:none to display:block if you want
-       to inspect the detected viewport.
        ========================================================= */
 
     #debug {
@@ -251,7 +245,6 @@ function updateStageScale() {
   const scaleX =
     viewportWidth /
     DESIGN_WIDTH;
-
 
   const scaleY =
     viewportHeight /
